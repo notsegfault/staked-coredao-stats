@@ -1,6 +1,7 @@
 import { BigNumber, ethers } from 'ethers';
 import { EOL } from 'os';
 import fs from 'fs';
+const VaultABI = require('../abi/vault.json');
 import { assert } from 'console';
 
 const RPC_URL = "https://eth-mainnet.alchemyapi.io/v2/TsLEJAhX87icgMO7ZVyPcpeEgpFEo96O";
@@ -15,6 +16,7 @@ console.log(`Contract Address ${VAULT_ADDRESS}`);
 
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 const decoder = new ethers.utils.AbiCoder();
+const vault = new ethers.Contract(VAULT_ADDRESS, VaultABI, provider);
 
 const main = async () => {
   const toBlock = await provider.getBlockNumber();
@@ -72,15 +74,29 @@ const main = async () => {
   }
 
   let content = "";
-  Object.keys(userStakedBalance).forEach(account => {
+  const accounts = Object.keys(userStakedBalance);
+
+  for (let i = 0; i < accounts.length; i++) {
+    const account = accounts[i];
     const amount = userStakedBalance[account];
-    assert(amount.gte(0));
+
+    console.log(`[${i + 1}/${accounts.length}] Validating ${account} balance...`);
+
+    // verify onchain value
+    const userInfo = await vault.userInfo(PID, account);
+    if (!userInfo.amount.eq(amount)) {
+      throw new Error(`Balance mismatch, expected ${userInfo.amount.toString()} but value is ${amount}`)
+    }
+
+    if (amount.lt(0)) {
+      throw new Error(`Balance is negative: ${amount}`)
+    }
 
     if (amount.gt(0)) {
       content += `_balances[${ethers.utils.getAddress(account)}] = ${amount.toString()};${EOL}`;
     }
     //console.log(account, amount.toString());
-  })
+  }
 
   fs.writeFile('data/entries.sol', content, { flag: 'w+' }, err => { })
 };
