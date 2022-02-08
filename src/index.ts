@@ -93,7 +93,7 @@ const main = async () => {
     }
 
     if (amount.gt(0)) {
-      content += `_balances[${ethers.utils.getAddress(account)}] = ${amount.toString()};${EOL}`;
+      content += `_mint(${ethers.utils.getAddress(account)}, ${amount.toString()});${EOL}`;
     }
     //console.log(account, amount.toString());
   }
